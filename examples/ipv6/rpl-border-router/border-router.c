@@ -221,7 +221,9 @@ set_prefix_64(uip_ipaddr_t *prefix_64)
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(border_router_process, ev, data)
 {
+#ifdef PREFIX_DISC
   static struct etimer et;
+#endif
   rpl_dag_t *dag;
 
   PROCESS_BEGIN();
@@ -240,12 +242,17 @@ PROCESS_THREAD(border_router_process, ev, data)
      cpu will interfere with establishing the SLIP connection */
   NETSTACK_MAC.off(1);
  
+#ifndef PREFIX_DISC
+  if (!uiplib_ipaddrconv("aaaa::", &prefix))
+      goto err;
+#else
   /* Request prefix until it has been received */
   while(!prefix_set) {
     etimer_set(&et, CLOCK_SECOND);
     request_prefix();
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
   }
+#endif
 
   dag = rpl_set_root(RPL_DEFAULT_INSTANCE,(uip_ip6addr_t *)dag_id);
   if(dag != NULL) {
@@ -265,6 +272,8 @@ PROCESS_THREAD(border_router_process, ev, data)
     }
   }
 
+err:
+  PRINTF("Shutting down\n");
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/

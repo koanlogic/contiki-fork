@@ -34,6 +34,11 @@ APPS += $(WITH_WEBSERVER)
 CFLAGS += -DWEBSERVER=2
 endif
 
+# prefix discovery disabled by default - for environments without a Router
+# Advertisement Daemon - prefix is hard-coded to "aaaa::"
+# to reenable discovery uncomment the following line:
+# CFLAGS += -DPREFIX_DISC
+
 include $(CONTIKI)/Makefile.include
 
 $(CONTIKI)/tools/tunslip6:	$(CONTIKI)/tools/tunslip6.c
