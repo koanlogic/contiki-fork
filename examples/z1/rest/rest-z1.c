@@ -88,7 +88,6 @@ void tmp_handler(void* request, void* response, uint8_t *buffer, uint16_t
     int16_t sign = 1;
     uint16_t frac;
     uint16_t absraw;
-    char minus = ' ';
     char s_tmp[20];
     int length;
 
@@ -100,9 +99,12 @@ void tmp_handler(void* request, void* response, uint8_t *buffer, uint16_t
     }
     intg = (absraw >> 8) * sign;
     frac = ((absraw >> 4) % 16) * 625;  /* info in 1/10000 of degree */
-    minus = ((intg == 0) && (sign == -1)) ? '-' : ' ';
 
-    length = snprintf(s_tmp, sizeof(s_tmp), "%c%d.%04d", minus, intg, frac);
+    if ((intg == 0) && (sign == -1))
+        length = snprintf(s_tmp, sizeof(s_tmp), "-%d.%04d", intg, frac);
+    else
+        length = snprintf(s_tmp, sizeof(s_tmp), "%d.%04d", intg, frac);
+
     ERR_IF (length <= 0);
 
     memcpy(buffer, s_tmp, length);
