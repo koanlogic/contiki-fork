@@ -56,4 +56,9 @@
         }                                               \
     } while (0);
 
+#define BUF_APPEND(to, to_sz, from, from_sz)            \
+    memcpy(to, from, from_sz);                          \
+    to += from_sz;                                      \
+    to_sz -= from_sz;
+
 #endif

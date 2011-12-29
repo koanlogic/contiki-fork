@@ -30,7 +30,8 @@
  */
 #include "rest-z1.h"
 
-static uint8_t __col2enum (const char *s_col, size_t len) 
+/** Convert a colour string ("r", "g", or "b") to enumeration. */
+static uint8_t __col2enum (const char *s_col, size_t len)
 {
     if (strncmp(s_col, "r", len) == 0)
         return LEDS_RED;
@@ -38,22 +39,83 @@ static uint8_t __col2enum (const char *s_col, size_t len)
         return LEDS_GREEN;
     else if (strncmp(s_col, "b", len) == 0)
         return LEDS_BLUE;
-    else 
+    else
         return -1;
 }
 
-static uint8_t __str2bool (const char *s_on, size_t len) 
+/** Convert from string ("0", or "1") to boolean. */
+static uint8_t __str2bool (const char *s_on, size_t len)
 {
     if (strncmp(s_on, "1", len) == 0)
         return 1;
     else if (strncmp(s_on, "0", len) == 0)
         return 0;
-    else 
+    else
         return -1;
 }
 
+/** Fetch a string representation of the current temperature from sensor. */
+static int __calc_tmp (char *s, int s_sz, int *t_sz)
+{
+    int16_t raw;
+    int16_t intg;
+    int16_t sign = 1;
+    uint16_t frac;
+    uint16_t absraw;
+
+    raw = tmp102_read_temp_raw();
+    absraw = raw;
+
+    if(raw < 0)   /* perform 2C's if sensor returned negative data */
+    {
+      absraw = (raw ^ 0xFFFF) + 1;
+      sign = -1;
+    }
+    intg = (absraw >> 8) * sign;
+    frac = ((absraw >> 4) % 16) * 625;  /* info in 1/10000 of degree */
+
+    if ((intg == 0) && (sign == -1))
+        *t_sz = snprintf(s, s_sz, "-%d.%04d", intg, frac);
+    else
+        *t_sz = snprintf(s, s_sz, "%d.%04d", intg, frac);
+
+    ERR_IF (*t_sz <= 0);
+
+    return 0;
+err:
+    return ~0;
+}
+
+/**
+ * Fetch a string representation of the the x, y and z axis values from
+ * accelerometer.
+ */
+static int __calc_acc (char *s, int s_sz, int *t_sz)
+{
+    int16_t x, y, z;
+
+    x = accm_read_axis(X_AXIS);
+    y = accm_read_axis(Y_AXIS);
+    z = accm_read_axis(Z_AXIS);
+
+    *t_sz = snprintf(s, s_sz, "%hd,%hd,%hd", x, y, z);
+    ERR_IF (*t_sz <= 0);
+
+    return 0;
+err:
+    return ~0;
+}
+
+/**
+ * PUT or POST to change led values.
+ *
+ * url = '/leds?col=COL&on=BOOL',
+ *
+ * where COL=   "r"|"g"|"b" and
+ *       BOOL=  "0"|"1"
+ */
 RESOURCE(leds, METHOD_PUT | METHOD_POST, "leds", "title=\"LED controls\";rt=\"Text\"");
-void leds_handler(void* request, void* response, uint8_t *buffer, uint16_t
+void leds_handler (void* request, void* response, uint8_t *buffer, uint16_t
         preferred_size, int32_t *offset)
 {
     uint8_t col = LEDS_RED;       /* default to red */
@@ -79,34 +141,21 @@ err:
     return;
 }
 
+/**
+ * GET the temperature.
+ *
+ * url = '/tmp',
+ *
+ * which returns something like '26.1234' (4dp).
+ */
 RESOURCE(tmp, METHOD_GET, "tmp", "title=\"Temperature\";rt=\"Text\"");
-void tmp_handler(void* request, void* response, uint8_t *buffer, uint16_t
+void tmp_handler (void* request, void* response, uint8_t *buffer, uint16_t
         preferred_size, int32_t *offset)
 {
-    int16_t raw;
-    int16_t intg;
-    int16_t sign = 1;
-    uint16_t frac;
-    uint16_t absraw;
     char s_tmp[20];
     int length;
 
-    raw = tmp102_read_temp_raw();
-    absraw = raw;
-    if(raw < 0) {  /* perform 2C's if sensor returned negative data */
-      absraw = (raw ^ 0xFFFF) + 1;
-      sign = -1;
-    }
-    intg = (absraw >> 8) * sign;
-    frac = ((absraw >> 4) % 16) * 625;  /* info in 1/10000 of degree */
-
-    if ((intg == 0) && (sign == -1))
-        length = snprintf(s_tmp, sizeof(s_tmp), "-%d.%04d", intg, frac);
-    else
-        length = snprintf(s_tmp, sizeof(s_tmp), "%d.%04d", intg, frac);
-
-    ERR_IF (length <= 0);
-
+    ERR_IF (__calc_tmp(s_tmp, sizeof(s_tmp), &length));
     memcpy(buffer, s_tmp, length);
 
     REST.set_header_content_type(response, REST.type.TEXT_PLAIN);
@@ -118,22 +167,58 @@ err:
     return;
 }
 
+/**
+ * GET axis values from accelerometer.
+ *
+ * url = '/acc',
+ *
+ * which returns something like: '100,100,200'.
+ */
 RESOURCE(acc, METHOD_GET, "acc", "title=\"Accelerometer\";rt=\"Text\"");
-void acc_handler(void* request, void* response, uint8_t *buffer, uint16_t
+void acc_handler (void* request, void* response, uint8_t *buffer, uint16_t
         preferred_size, int32_t *offset)
 {
-    int16_t x, y, z;
     char s_acc[20];
     int length;
 
-    x = accm_read_axis(X_AXIS);
-    y = accm_read_axis(Y_AXIS);
-    z = accm_read_axis(Z_AXIS);
-
-    length = snprintf(s_acc, sizeof(s_acc), "%hd,%hd,%hd", x, y, z);
-    ERR_IF (length <= 0);
+    ERR_IF (__calc_acc(s_acc, sizeof(s_acc), &length));
 
     memcpy(buffer, s_acc, length);
+
+    REST.set_header_content_type(response, REST.type.TEXT_PLAIN);
+    REST.set_response_payload(response, buffer, length);
+
+    return;
+err:
+    REST.set_response_status(response, REST.status.BAD_REQUEST);
+    return;
+}
+
+/**
+ * GET temperature and axis values from accelerometer.
+ *
+ * url = '/acctmp',
+ *
+ * which returns something like '26.1234:100,100,200'.
+ */
+RESOURCE(acctmp, METHOD_GET, "acctmp", "title=\"Temperature and"\
+        "Accelerometer\";rt=\"Text\"");
+void acctmp_handler (void* request, void* response, uint8_t *buffer, uint16_t
+        preferred_size, int32_t *offset)
+{
+    char s[30], st[10], *sp = s;
+    int len, length, s_left = sizeof(s);
+
+    ERR_IF (__calc_acc(st, sizeof(st), &len));
+    BUF_APPEND(sp, s_left, st, len);
+
+    BUF_APPEND(sp, s_left, ":", sizeof(char));
+
+    ERR_IF (__calc_tmp(st, sizeof(st), &len));
+    BUF_APPEND(sp, s_left, st, len);
+
+    length = sizeof(s) - s_left;
+    memcpy(buffer, s, length);
 
     REST.set_header_content_type(response, REST.type.TEXT_PLAIN);
     REST.set_response_payload(response, buffer, length);
@@ -147,7 +232,12 @@ err:
 PROCESS(rest_server_example, "Z1 REST example");
 AUTOSTART_PROCESSES(&rest_server_example);
 
-PROCESS_THREAD(rest_server_example, ev, data)
+/**
+ * Main process
+ *
+ * Performs initialisations, activates resources and waits for events.
+ */
+PROCESS_THREAD (rest_server_example, ev, data)
 {
     PROCESS_BEGIN();
 
@@ -156,6 +246,7 @@ PROCESS_THREAD(rest_server_example, ev, data)
     PRINTF("LL header: %u\n", UIP_LLH_LEN);
     PRINTF("IP+UDP header: %u\n", UIP_IPUDPH_LEN);
     PRINTF("REST max chunk: %u\n", REST_MAX_CHUNK_SIZE);
+    PRINTF("XXX 0\n");
 
     /* initialize sensors */
     tmp102_init();
@@ -168,6 +259,7 @@ PROCESS_THREAD(rest_server_example, ev, data)
     rest_activate_resource(&resource_leds);
     rest_activate_resource(&resource_tmp);
     rest_activate_resource(&resource_acc);
+    rest_activate_resource(&resource_acctmp);
 
     /* define application-specific events */
     while (1)
