@@ -52,7 +52,7 @@ static uint8_t __str2bool (const char *s_on, size_t len)
         return -1;
 }
 
-RESOURCE(leds, METHOD_GET, "leds", "title=\"LED controls\";rt=\"Text\"");
+RESOURCE(leds, METHOD_PUT | METHOD_POST, "leds", "title=\"LED controls\";rt=\"Text\"");
 void leds_handler(void* request, void* response, uint8_t *buffer, uint16_t
         preferred_size, int32_t *offset)
 {
