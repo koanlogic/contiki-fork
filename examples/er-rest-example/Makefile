@@ -53,6 +53,11 @@ CFLAGS += -DUIP_CONF_TCP=1
 APPS += rest-http-engine
 endif
 
+# reduce size for Z1 platform
+ifeq ($(TARGET), z1)
+CFLAGS += -DREST_MAX_CHUNK_SIZE=32
+endif
+
 APPS += erbium
 
 
