@@ -114,7 +114,7 @@ err:
  * where COL=   "r"|"g"|"b" and
  *       BOOL=  "0"|"1"
  */
-RESOURCE(leds, METHOD_PUT | METHOD_POST, "leds", "title=\"LED controls\";rt=\"Text\"");
+RESOURCE(leds, METHOD_PUT | METHOD_POST, "leds", "title=\"LED Controls\";rt=\"Leds\"");
 void leds_handler (void* request, void* response, uint8_t *buffer, uint16_t
         preferred_size, int32_t *offset)
 {
@@ -148,7 +148,7 @@ err:
  *
  * which returns something like '26.1234' (4dp).
  */
-RESOURCE(tmp, METHOD_GET, "tmp", "title=\"Temperature\";rt=\"Text\"");
+RESOURCE(tmp, METHOD_GET, "tmp", "title=\"Temperature\";rt=\"Temp\"");
 void tmp_handler (void* request, void* response, uint8_t *buffer, uint16_t
         preferred_size, int32_t *offset)
 {
@@ -174,7 +174,7 @@ err:
  *
  * which returns something like: '100,100,200'.
  */
-RESOURCE(acc, METHOD_GET, "acc", "title=\"Accelerometer\";rt=\"Text\"");
+RESOURCE(acc, METHOD_GET, "acc", "title=\"Accelerometer\";rt=\"Acc\"");
 void acc_handler (void* request, void* response, uint8_t *buffer, uint16_t
         preferred_size, int32_t *offset)
 {
@@ -201,8 +201,8 @@ err:
  *
  * which returns something like '26.1234:100,100,200'.
  */
-RESOURCE(acctmp, METHOD_GET, "acctmp", "title=\"Temperature and"\
-        "Accelerometer\";rt=\"Text\"");
+RESOURCE(acctmp, METHOD_GET, "acctmp", "title=\"Temperature and "\
+        "Accelerometer\";rt=\"TempAndAcc\"");
 void acctmp_handler (void* request, void* response, uint8_t *buffer, uint16_t
         preferred_size, int32_t *offset)
 {
