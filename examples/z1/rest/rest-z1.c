@@ -206,7 +206,11 @@ RESOURCE(acctmp, METHOD_GET, "acctmp", "title=\"Temperature and "\
 void acctmp_handler (void* request, void* response, uint8_t *buffer, uint16_t
         preferred_size, int32_t *offset)
 {
-    char s[30], st[10], *sp = s;
+    enum {
+        TOT_LEN = 30,   /* maximum total string size */
+        PART_LEN = 20   /* maximum size of measurement string (tmp or acc) */
+    };
+    char s[TOT_LEN], st[PART_LEN], *sp = s;
     int len, length, s_left = sizeof(s);
 
     ERR_IF (__calc_acc(st, sizeof(st), &len));
@@ -246,7 +250,6 @@ PROCESS_THREAD (rest_server_example, ev, data)
     PRINTF("LL header: %u\n", UIP_LLH_LEN);
     PRINTF("IP+UDP header: %u\n", UIP_IPUDPH_LEN);
     PRINTF("REST max chunk: %u\n", REST_MAX_CHUNK_SIZE);
-    PRINTF("XXX 0\n");
 
     /* initialize sensors */
     tmp102_init();
